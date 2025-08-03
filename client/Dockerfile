@@ -1,11 +1,11 @@
-FROM guergeiro/pnpm:22-10-alpine AS build
+FROM arm64v8/node:22-alpine3.21 AS build
 
 WORKDIR /app
 COPY . .
 
-RUN pnpm i
+RUN npm i
 
 EXPOSE 5173
 
-ENTRYPOINT ["pnpm", "run", "dev", "--host", "0.0.0.0"]
+ENTRYPOINT ["npm", "run", "dev", "--host", "0.0.0.0"]
 
