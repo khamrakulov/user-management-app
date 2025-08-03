@@ -1,12 +1,12 @@
 ﻿services:
-  db:
-    image: postgres:16
+  postgres:
+    image: postgres:16-alpine
     container_name: postgres_db
     restart: always
     env_file:
       - .env
     ports:
-      - "5432:5432"
+      - "5555:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -15,5 +15,49 @@
       retries: 5
       start_period: 10s
 
+  migrate: # <-- NEW SERVICE FOR MIGRATIONS
+    image: migrate/migrate:latest # Use a specific version, e.g., migrate/migrate:v4.16.2
+    container_name: db_migrator
+    env_file:
+      - .env # Use your .env file to get DB credentials for golang-migrate
+    volumes:
+      # Mount your local migrations directory.
+      # Replace './migrations' with the actual path to your migration files on your host.
+      - ./server/migrations_sql:/migrations
+    command: > # Use 'up' to apply all pending migrations, or 'up 2' for exactly 2
+      -path=/migrations
+      -database postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      up
+    depends_on:
+      postgres:
+        condition: service_healthy # Ensure the database is healthy before running migrations
+    # This service is designed to run once and exit successfully.
+    # Docker Compose will not restart it if it exits.
+
+  server:
+    build:
+      context: ./server/ # Assumes your Dockerfile is directly in ./server/
+      dockerfile: Dockerfile
+      # args:
+      #   # Pass the connection string to the Dockerfile's build process
+      #   # This should match the internal Docker network name for the DB service
+      #   DB_CONNECTION_STRING: "Host=postgres;Port=5555;Database=uma_db;Username=admin;Password=securepassword123"
+    env_file:
+      - ./server/.env
+    ports:
+      - 5062:5062
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+  client:
+    build: ./client/
+    container_name: uma_client
+    environment: # <-- This passes the environment variable into the client container
+      - VITE_APP_API_BASE_URL=http://localhost:5062
+    ports:
+      - 3001:5173
+    depends_on:
+      - server
 volumes:
   postgres_data:
