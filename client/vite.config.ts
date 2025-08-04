@@ -22,15 +22,6 @@ export default defineConfig({
     // Allow specific hosts for your development server to respond to.
     // 'uma.codearch.uz' is your Nginx-proxied subdomain.
     // 'localhost' is needed if you access the app directly via localhost:3001 during development.
-    allowedHosts: [
-      '*',
-      'uma.codearch.uz',
-      '*.codearch.uz',
-      '37.27.188.235',
-      'localhost',
-      '127.0.0.1', // Include 127.0.0.1 for local access
-      // You might also need to add your machine's local IP address (e.g., '192.168.1.100')
-      // if you access the dev server from other devices on your local network.
-    ],
+    allowedHosts: true,
   },
 });
