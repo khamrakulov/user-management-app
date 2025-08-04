@@ -41,14 +41,15 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
-// CORS policy
+// CORS policy — adjust origin to match your frontend URL
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
         policy
-            .AllowAnyOrigin()
+            .WithOrigins("http://localhost:3001") // frontend origin
             .AllowAnyMethod()
-            .AllowAnyHeader());
+            .AllowAnyHeader()
+            .AllowCredentials());
 });
 
 var app = builder.Build();
@@ -60,13 +61,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseRouting();
 
-// CORS must be before authentication & authorization
+// CORS must be before authentication/authorization
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Allow OPTIONS requests for CORS preflight
+// Ensure OPTIONS preflight passes through
 app.Use(async (context, next) =>
 {
     if (context.Request.Method == HttpMethods.Options)
@@ -77,6 +78,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
+// Custom user validation middleware
 app.UseUserValidation();
 
 app.MapControllers();

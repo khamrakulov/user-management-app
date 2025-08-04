@@ -17,7 +17,15 @@ namespace user_management_app.Middleware
 
         public async Task InvokeAsync(HttpContext context, AppDbContext dbContext)
         {
-            if (context.User.Identity?.IsAuthenticated == true && !context.Request.Path.StartsWithSegments("/api/auth"))
+            // Allow preflight CORS requests to pass without validation
+            if (context.Request.Method == HttpMethods.Options)
+            {
+                context.Response.StatusCode = StatusCodes.Status204NoContent;
+                return;
+            }
+
+            if (context.User.Identity?.IsAuthenticated == true &&
+                !context.Request.Path.StartsWithSegments("/api/auth"))
             {
                 var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
                 if (userIdClaim is null || !int.TryParse(userIdClaim.Value, out var userId))
@@ -28,13 +36,14 @@ namespace user_management_app.Middleware
                 }
 
                 var user = await dbContext.Users.FindAsync(userId);
-                if (user is null || user.Status == UserStatus.Blocked) // Changed from "Blocked"
+                if (user is null || user.Status == UserStatus.Blocked)
                 {
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                     await context.Response.WriteAsync("User is blocked or does not exist");
                     return;
                 }
             }
+
             await _next(context);
         }
     }
