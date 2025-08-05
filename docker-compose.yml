@@ -1,4 +1,5 @@
-﻿services:
+﻿version: '3.8'
+services:
   postgres:
     image: postgres:16-alpine
     container_name: postgres_db
@@ -36,28 +37,32 @@
 
   server:
     build:
-      context: ./server/ # Assumes your Dockerfile is directly in ./server/
+      context: ./server/ # Points to your backend Dockerfile
       dockerfile: Dockerfile
-      # args:
-      #   # Pass the connection string to the Dockerfile's build process
-      #   # This should match the internal Docker network name for the DB service
-      #   DB_CONNECTION_STRING: "Host=postgres;Port=5555;Database=uma_db;Username=admin;Password=securepassword123"
     env_file:
-      - ./server/.env
+      - ./.env # Uses the root .env file for database connection string and JWT settings
     ports:
       - 5062:5062
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate: # Server waits for migrations to complete successfully
+        condition: service_completed_successfully
+    volumes: # IMPORTANT: Volume mapping for development hot-reloading
+      - ./server/:/app # Mounts your host's backend source code into /app in the container
+      # Optional: Cache NuGet packages on the host for faster restore operations in subsequent builds
+      - ~/.nuget/packages:/root/.nuget/packages
+
   client:
-    build: ./client/
+    build: ./client/ # Points to your frontend Dockerfile
     container_name: uma_client
-    environment: # <-- This passes the environment variable into the client container
-      - VITE_APP_API_BASE_URL=http://localhost:5062
     ports:
       - 3001:5173
     depends_on:
       - server
+    volumes: # IMPORTANT: Volume mapping for development hot-reloading
+      - ./client/:/app # Mounts your host's frontend source code into /app in the container
+      # Anonymous volume for node_modules to prevent host's node_modules from conflicting
+      # with container's installed dependencies (important for native modules).
+      - /app/node_modules
 volumes:
   postgres_data:
